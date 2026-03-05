@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: petproject_db_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: project_nest
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  app:
+    build: .
+    container_name: petproject_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD}@db:5432/project_nest
+      PORT: 3001
+      ARTSEARCH_API_KEY: ${ARTSEARCH_API_KEY}
+      HUMORAPI_KEY: ${HUMORAPI_KEY}
+    ports:
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      - db
+    networks:
+      - internal
+
+networks:
+  internal:
+
+volumes:
+  pgdata:

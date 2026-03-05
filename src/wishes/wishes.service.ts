@@ -8,7 +8,7 @@ import { QueryWishesDto } from './dto/query-wishes.dto';
 export class WishesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(query: QueryWishesDto) {
+  async findAll(query: QueryWishesDto, userId: string) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const search = query.search?.trim() ?? '';
@@ -16,12 +16,13 @@ export class WishesService {
 
     const where = search
       ? {
+          userId,
           OR: [
             { title: { contains: search, mode: 'insensitive' as const } },
             { description: { contains: search, mode: 'insensitive' as const } },
           ],
         }
-      : {};
+      : { userId };
 
     const [data, total] = await Promise.all([
       this.prisma.wish.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' } }),
@@ -31,14 +32,14 @@ export class WishesService {
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userId: string) {
     const wish = await this.prisma.wish.findUnique({ where: { id } });
-    if (!wish) throw new NotFoundException(`Wish ${id} not found`);
+    if (!wish || wish.userId !== userId) throw new NotFoundException(`Wish ${id} not found`);
     return wish;
   }
 
-  async create(dto: CreateWishDto) {
-    const wish = await this.prisma.wish.create({ data: dto });
+  async create(dto: CreateWishDto, userId: string) {
+    const wish = await this.prisma.wish.create({ data: { ...dto, userId } });
     await this.prisma.wishLog.create({
       data: {
         action: 'CREATE',
@@ -50,8 +51,8 @@ export class WishesService {
     return wish;
   }
 
-  async update(id: string, dto: UpdateWishDto) {
-    const existing = await this.findOne(id);
+  async update(id: string, dto: UpdateWishDto, userId: string) {
+    const existing = await this.findOne(id, userId);
     const wish = await this.prisma.wish.update({ where: { id }, data: dto });
     await this.prisma.wishLog.create({
       data: {
@@ -65,8 +66,8 @@ export class WishesService {
     return wish;
   }
 
-  async remove(id: string) {
-    const existing = await this.findOne(id);
+  async remove(id: string, userId: string) {
+    const existing = await this.findOne(id, userId);
     await this.prisma.wish.delete({ where: { id } });
     await this.prisma.wishLog.create({
       data: {

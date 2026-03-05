@@ -1,6 +1,8 @@
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
 import { WishesModule } from './wishes/wishes.module';
 import { WishLogsModule } from './wish-logs/wish-logs.module';
 import { RequestLogsModule } from './request-logs/request-logs.module';
@@ -13,6 +15,8 @@ import { LoggingMiddleware } from './middleware/logging.middleware';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    AuthModule,
+    UsersModule,
     QuotasModule,
     WishesModule,
     WishLogsModule,

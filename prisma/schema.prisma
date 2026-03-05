@@ -12,12 +12,32 @@ enum LogAction {
   DELETE
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique @db.VarChar(255)
+  passwordHash String?   @db.Text
+  googleId     String?   @unique @db.VarChar(100)
+  role         UserRole  @default(USER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  wishes       Wish[]
+
+  @@map("users")
+}
+
 model Wish {
   id          String   @id @default(uuid()) @db.Uuid
   title       String   @db.VarChar(50)
   description String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  userId      String   @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("wishes")
 }

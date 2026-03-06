@@ -61,7 +61,7 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   googleCallback(@Req() req: Request, @Res() res: Response) {
     this.authService.setCookie(res, req.user as any);
-    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
+    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:3003');
     res.redirect(frontendUrl);
   }
 }

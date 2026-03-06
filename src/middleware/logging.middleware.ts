@@ -13,7 +13,9 @@ export class LoggingMiddleware implements NestMiddleware {
 
     let body: string | null = null;
     const contentType = req.headers['content-type'] ?? '';
+    const isSensitive = /^\/(auth|users)\//i.test(originalUrl);
     if (
+      !isSensitive &&
       !['GET', 'HEAD', 'OPTIONS', 'DELETE'].includes(method) &&
       (contentType.includes('application/json') || contentType.includes('text/'))
     ) {

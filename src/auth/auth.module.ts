@@ -17,13 +17,13 @@ import { GoogleStrategy } from './strategies/google.strategy';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET', 'fallback-secret'),
+        secret: config.get<string>('JWT_SECRET'),
         signOptions: { expiresIn: '7d' },
       }),
     }),
   ],
   providers: [AuthService, LocalStrategy, JwtStrategy, GoogleStrategy],
   controllers: [AuthController],
-  exports: [AuthService],
+  exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

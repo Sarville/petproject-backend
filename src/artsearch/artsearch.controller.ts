@@ -1,8 +1,10 @@
-import { All, Controller, Param, Req, Res } from '@nestjs/common';
+import { All, Controller, Param, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ArtsearchService } from './artsearch.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('artsearch')
+@UseGuards(JwtAuthGuard)
 export class ArtsearchController {
   constructor(private readonly artsearchService: ArtsearchService) {}
 

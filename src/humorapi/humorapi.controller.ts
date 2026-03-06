@@ -1,8 +1,10 @@
-import { All, Controller, Req, Res } from '@nestjs/common';
+import { All, Controller, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { HumorapiService } from './humorapi.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('humorapi')
+@UseGuards(JwtAuthGuard)
 export class HumorapiController {
   constructor(private readonly humorapiService: HumorapiService) {}
 

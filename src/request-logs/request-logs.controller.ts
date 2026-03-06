@@ -1,19 +1,18 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RequestLogsService } from './request-logs.service';
 import { QueryRequestLogsDto } from './dto/query-request-logs.dto';
 
+interface RequestUser { id: string; email: string; role: string }
+
 @Controller('request-logs')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@UseGuards(JwtAuthGuard)
 export class RequestLogsController {
   constructor(private readonly requestLogsService: RequestLogsService) {}
 
   @Get()
-  findAll(@Query() query: QueryRequestLogsDto) {
-    return this.requestLogsService.findAll(query);
+  findAll(@Query() query: QueryRequestLogsDto, @CurrentUser() user: RequestUser) {
+    return this.requestLogsService.findAll(query, user.id, user.role === 'ADMIN');
   }
 }

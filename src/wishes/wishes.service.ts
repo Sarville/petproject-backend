@@ -45,6 +45,7 @@ export class WishesService {
         action: 'CREATE',
         wishId: wish.id,
         wishTitle: wish.title,
+        userId,
         newValues: { title: wish.title, description: wish.description },
       },
     });
@@ -59,6 +60,7 @@ export class WishesService {
         action: 'UPDATE',
         wishId: wish.id,
         wishTitle: wish.title,
+        userId,
         oldValues: { title: existing.title, description: existing.description },
         newValues: { title: wish.title, description: wish.description },
       },
@@ -74,6 +76,7 @@ export class WishesService {
         action: 'DELETE',
         wishId: existing.id,
         wishTitle: existing.title,
+        userId,
         oldValues: { title: existing.title, description: existing.description },
       },
     });

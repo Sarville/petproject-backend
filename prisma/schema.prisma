@@ -47,6 +47,7 @@ model WishLog {
   action    LogAction
   wishId    String    @db.Uuid
   wishTitle String    @db.VarChar(50)
+  userId    String?   @db.Uuid
   oldValues Json?
   newValues Json?
   createdAt DateTime  @default(now())

@@ -6,13 +6,14 @@ import { QueryWishLogsDto } from './dto/query-wish-logs.dto';
 export class WishLogsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(query: QueryWishLogsDto) {
+  async findAll(query: QueryWishLogsDto, userId: string, isAdmin: boolean) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const skip = (page - 1) * limit;
     const sortDir = query.sortDir ?? 'desc';
 
     const where: any = {};
+    if (!isAdmin) where.userId = userId;
     if (query.action) where.action = query.action;
     if (query.search) where.wishTitle = { contains: query.search, mode: 'insensitive' };
 

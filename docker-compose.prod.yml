@@ -28,6 +28,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL}
       FRONTEND_URL: ${FRONTEND_URL}
+      NODE_ENV: production
     ports:
       - "127.0.0.1:3001:3001"
     depends_on:

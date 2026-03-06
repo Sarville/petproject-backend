@@ -61,10 +61,11 @@ export class AuthService {
       email: user.email,
       role: user.role,
     });
+    const isProduction = this.config.get<string>('NODE_ENV') === 'production';
     res.cookie('access_token', token, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: false,
+      secure: isProduction,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
   }

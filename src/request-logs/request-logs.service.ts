@@ -19,22 +19,23 @@ export class RequestLogsService {
       ...(query.search && { url: { contains: query.search, mode: 'insensitive' as const } }),
     };
 
-    const total = await this.prisma.requestLog.count({ where });
-
-    const data = isAdmin
-      ? await this.prisma.requestLog.findMany({
-          where,
-          skip,
-          take: limit,
-          orderBy: { createdAt: sortDir },
-          include: { user: { select: { email: true } } },
-        })
-      : await this.prisma.requestLog.findMany({
-          where,
-          skip,
-          take: limit,
-          orderBy: { createdAt: sortDir },
-        });
+    const [total, data] = await Promise.all([
+      this.prisma.requestLog.count({ where }),
+      isAdmin
+        ? this.prisma.requestLog.findMany({
+            where,
+            skip,
+            take: limit,
+            orderBy: { createdAt: sortDir },
+            include: { user: { select: { email: true } } },
+          })
+        : this.prisma.requestLog.findMany({
+            where,
+            skip,
+            take: limit,
+            orderBy: { createdAt: sortDir },
+          }),
+    ]);
 
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }

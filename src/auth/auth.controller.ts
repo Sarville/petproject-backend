@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -26,13 +27,14 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(201)
+  @UseGuards(ThrottlerGuard)
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
   @Post('login')
   @HttpCode(200)
-  @UseGuards(LocalAuthGuard)
+  @UseGuards(ThrottlerGuard, LocalAuthGuard)
   login(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     this.authService.setCookie(res, req.user as any);
     return req.user;

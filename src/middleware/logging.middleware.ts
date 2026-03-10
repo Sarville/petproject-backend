@@ -19,7 +19,7 @@ export class LoggingMiddleware implements NestMiddleware {
     const token = req.cookies?.access_token;
     if (token) {
       try {
-        const payload = this.jwtService.decode(token) as { sub?: string } | null;
+        const payload = this.jwtService.verify(token) as { sub?: string };
         userId = payload?.sub ?? null;
       } catch {
         // ignore

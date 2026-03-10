@@ -21,7 +21,8 @@ export class HumorapiService {
         this.httpService.request({
           method: 'GET',
           url,
-          params: { ...params, 'api-key': apiKey },
+          params,
+          headers: { 'x-api-key': apiKey },
         }),
       );
 

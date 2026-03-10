@@ -26,6 +26,21 @@ export class PaymentsService {
     this.stripe = new Stripe(secretKey, { apiVersion: '2026-02-25.clover' });
   }
 
+  async getSavedCard(userId: string): Promise<{ brand: string; last4: string } | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { stripePaymentMethodId: true },
+    });
+    if (!user?.stripePaymentMethodId) return null;
+    try {
+      const pm = await this.stripe.paymentMethods.retrieve(user.stripePaymentMethodId);
+      if (pm.card) return { brand: pm.card.brand, last4: pm.card.last4 };
+    } catch (err) {
+      this.logger.warn(`Failed to retrieve PM ${user.stripePaymentMethodId}: ${String(err)}`);
+    }
+    return null;
+  }
+
   async createPaymentIntent(
     userId: string,
     email: string,
@@ -33,13 +48,25 @@ export class PaymentsService {
     try {
       const customerId = await this.getOrCreateCustomer(userId, email);
 
-      const paymentIntent = await this.stripe.paymentIntents.create({
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { stripePaymentMethodId: true },
+      });
+      const savedPmId = user?.stripePaymentMethodId ?? null;
+
+      const params: Stripe.PaymentIntentCreateParams = {
         amount: AMOUNT_CENTS,
         currency: 'usd',
         customer: customerId,
         automatic_payment_methods: { enabled: true },
         metadata: { userId },
-      });
+      };
+
+      if (savedPmId) {
+        params.payment_method = savedPmId;
+      }
+
+      const paymentIntent = await this.stripe.paymentIntents.create(params);
 
       await this.prisma.transaction.create({
         data: {
@@ -78,6 +105,26 @@ export class PaymentsService {
       }
       throw err;
     }
+  }
+
+  async removePaymentMethod(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { stripePaymentMethodId: true },
+    });
+
+    if (!user?.stripePaymentMethodId) return;
+
+    try {
+      await this.stripe.paymentMethods.detach(user.stripePaymentMethodId);
+    } catch (err) {
+      this.logger.warn(`Failed to detach PM ${user.stripePaymentMethodId}: ${String(err)}`);
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { stripePaymentMethodId: null },
+    });
   }
 
   async handleWebhook(rawBody: Buffer, signature: string): Promise<void> {
@@ -130,6 +177,13 @@ export class PaymentsService {
         return { status: 'succeeded', alreadyProcessed: true };
       }
 
+      const paymentMethodId =
+        typeof paymentIntent.payment_method === 'string'
+          ? paymentIntent.payment_method
+          : paymentIntent.payment_method?.id ?? null;
+
+      const shouldSavePm = paymentIntent.setup_future_usage != null && paymentMethodId != null;
+
       await this.prisma.$transaction([
         this.prisma.transaction.update({
           where: { id: transaction.id },
@@ -137,7 +191,10 @@ export class PaymentsService {
         }),
         this.prisma.user.update({
           where: { id: transaction.userId },
-          data: { balance: { increment: transaction.amount } },
+          data: {
+            balance: { increment: transaction.amount },
+            ...(shouldSavePm ? { stripePaymentMethodId: paymentMethodId } : {}),
+          },
         }),
       ]);
 
@@ -182,13 +239,14 @@ export class PaymentsService {
       return;
     }
 
-    // Extract saved payment method if Stripe stored it
     const paymentMethodId =
       typeof paymentIntent.payment_method === 'string'
         ? paymentIntent.payment_method
         : paymentIntent.payment_method?.id ?? null;
 
-    // Atomic: update transaction + increment user balance in a single Prisma transaction
+    // Save PM only when user explicitly requested it via "Save card" checkbox
+    const shouldSavePm = paymentIntent.setup_future_usage != null && paymentMethodId != null;
+
     await this.prisma.$transaction([
       this.prisma.transaction.update({
         where: { id: transaction.id },
@@ -201,7 +259,7 @@ export class PaymentsService {
         where: { id: transaction.userId },
         data: {
           balance: { increment: transaction.amount },
-          ...(paymentMethodId ? { stripePaymentMethodId: paymentMethodId } : {}),
+          ...(shouldSavePm ? { stripePaymentMethodId: paymentMethodId } : {}),
         },
       }),
     ]);

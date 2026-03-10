@@ -1,9 +1,7 @@
 name: Deploy backend to production
 
 on:
-  push:
-    branches:
-      - master
+  workflow_dispatch:
 
 jobs:
   deploy:

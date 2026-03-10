@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   Headers,
   HttpCode,
   Post,
@@ -17,6 +18,13 @@ import { PaymentsService } from './payments.service';
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
+
+  @Get('saved-card')
+  @UseGuards(JwtAuthGuard)
+  async getSavedCard(@CurrentUser() user: { id: string }) {
+    const card = await this.paymentsService.getSavedCard(user.id);
+    return card ?? {};
+  }
 
   @Post('create-intent')
   @UseGuards(JwtAuthGuard)
@@ -40,6 +48,13 @@ export class PaymentsController {
   syncIntent(@Body('paymentIntentId') paymentIntentId: string) {
     if (!paymentIntentId) throw new BadRequestException('paymentIntentId is required');
     return this.paymentsService.syncPaymentIntent(paymentIntentId);
+  }
+
+  @Post('remove-payment-method')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200)
+  removePaymentMethod(@CurrentUser() user: { id: string }) {
+    return this.paymentsService.removePaymentMethod(user.id);
   }
 
   @Post('webhook')

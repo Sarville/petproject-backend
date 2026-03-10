@@ -9,6 +9,7 @@ import { RequestLogsModule } from './request-logs/request-logs.module';
 import { ArtsearchModule } from './artsearch/artsearch.module';
 import { HumorapiModule } from './humorapi/humorapi.module';
 import { QuotasModule } from './quotas/quotas.module';
+import { PaymentsModule } from './payments/payments.module';
 import { LoggingMiddleware } from './middleware/logging.middleware';
 
 @Module({
@@ -23,6 +24,7 @@ import { LoggingMiddleware } from './middleware/logging.middleware';
     RequestLogsModule,
     ArtsearchModule,
     HumorapiModule,
+    PaymentsModule,
   ],
 })
 export class AppModule implements NestModule {

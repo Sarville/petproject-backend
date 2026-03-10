@@ -17,18 +17,47 @@ enum UserRole {
   ADMIN
 }
 
+enum TransactionStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELED
+  REFUNDED
+}
+
 model User {
-  id           String       @id @default(uuid()) @db.Uuid
-  email        String       @unique @db.VarChar(255)
-  passwordHash String?      @db.Text
-  googleId     String?      @unique @db.VarChar(100)
-  role         UserRole     @default(USER)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  wishes       Wish[]
-  requestLogs  RequestLog[]
+  id               String        @id @default(uuid()) @db.Uuid
+  email            String        @unique @db.VarChar(255)
+  passwordHash     String?       @db.Text
+  googleId         String?       @unique @db.VarChar(100)
+  role             UserRole      @default(USER)
+  balance          Decimal       @default(0) @db.Decimal(10, 2)
+  stripeCustomerId        String?       @unique @map("stripe_customer_id") @db.VarChar(255)
+  stripePaymentMethodId   String?       @map("stripe_payment_method_id") @db.VarChar(255)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  wishes           Wish[]
+  requestLogs      RequestLog[]
+  transactions     Transaction[]
 
   @@map("users")
+}
+
+model Transaction {
+  id                    String            @id @default(uuid()) @db.Uuid
+  userId                String            @map("user_id") @db.Uuid
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripePaymentIntentId String            @unique @map("stripe_payment_intent_id") @db.VarChar(255)
+  stripeCustomerId      String?           @map("stripe_customer_id") @db.VarChar(255)
+  amount                Decimal           @db.Decimal(10, 2)
+  currency              String            @default("usd") @db.VarChar(10)
+  status                TransactionStatus @default(PENDING)
+  failureReason         String?           @map("failure_reason") @db.Text
+  stripeEventId         String?           @unique @map("stripe_event_id") @db.VarChar(255)
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  @@map("transactions")
 }
 
 model Wish {

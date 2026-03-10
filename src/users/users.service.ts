@@ -36,4 +36,34 @@ export class UsersService {
   updateRole(id: string, role: UserRole) {
     return this.prisma.user.update({ where: { id }, data: { role } });
   }
+
+  async getBalance(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { balance: true, stripePaymentMethodId: true },
+    });
+    if (!user) return null;
+    return { balance: user.balance, hasSavedCard: !!user.stripePaymentMethodId };
+  }
+
+  getTransactions(id: string, page: number, limit: number) {
+    const skip = (page - 1) * limit;
+    return Promise.all([
+      this.prisma.transaction.findMany({
+        where: { userId: id },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          amount: true,
+          currency: true,
+          status: true,
+          failureReason: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.transaction.count({ where: { userId: id } }),
+    ]).then(([data, total]) => ({ data, total, page, limit }));
+  }
 }

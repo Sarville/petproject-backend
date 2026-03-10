@@ -215,27 +215,12 @@ export class PaymentsService {
   private async handlePaymentSucceeded(event: Stripe.Event): Promise<void> {
     const paymentIntent = event.data.object as Stripe.PaymentIntent;
 
-    // Idempotency check: if this event was already processed, skip
-    const existingByEvent = await this.prisma.transaction.findUnique({
-      where: { stripeEventId: event.id },
-    });
-    if (existingByEvent) {
-      this.logger.log(`Duplicate webhook event ${event.id} — skipping`);
-      return;
-    }
-
     const transaction = await this.prisma.transaction.findUnique({
       where: { stripePaymentIntentId: paymentIntent.id },
     });
 
     if (!transaction) {
       this.logger.warn(`Transaction not found for PaymentIntent ${paymentIntent.id}`);
-      return;
-    }
-
-    // Idempotency check: if already succeeded, skip
-    if (transaction.status === TransactionStatus.SUCCEEDED) {
-      this.logger.log(`Transaction ${transaction.id} already succeeded — skipping`);
       return;
     }
 
@@ -247,22 +232,33 @@ export class PaymentsService {
     // Save PM only when user explicitly requested it via "Save card" checkbox
     const shouldSavePm = paymentIntent.setup_future_usage != null && paymentMethodId != null;
 
-    await this.prisma.$transaction([
-      this.prisma.transaction.update({
-        where: { id: transaction.id },
-        data: {
-          status: TransactionStatus.SUCCEEDED,
-          stripeEventId: event.id,
-        },
-      }),
-      this.prisma.user.update({
-        where: { id: transaction.userId },
-        data: {
-          balance: { increment: transaction.amount },
-          ...(shouldSavePm ? { stripePaymentMethodId: paymentMethodId } : {}),
-        },
-      }),
-    ]);
+    try {
+      await this.prisma.$transaction([
+        this.prisma.transaction.update({
+          where: { id: transaction.id, status: TransactionStatus.PENDING },
+          data: {
+            status: TransactionStatus.SUCCEEDED,
+            stripeEventId: event.id,
+          },
+        }),
+        this.prisma.user.update({
+          where: { id: transaction.userId },
+          data: {
+            balance: { increment: transaction.amount },
+            ...(shouldSavePm ? { stripePaymentMethodId: paymentMethodId } : {}),
+          },
+        }),
+      ]);
+    } catch (err: unknown) {
+      // P2025 = record not found (status was not PENDING — already processed)
+      // P2002 = unique constraint violation on stripeEventId (concurrent duplicate event)
+      const code = (err as { code?: string })?.code;
+      if (code === 'P2025' || code === 'P2002') {
+        this.logger.log(`Duplicate webhook event ${event.id} — skipping`);
+        return;
+      }
+      throw err;
+    }
 
     this.logger.log(`Balance credited: user=${transaction.userId} amount=${transaction.amount}`);
   }

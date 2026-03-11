@@ -17,12 +17,14 @@ import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { UsersService } from '../users/users.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly config: ConfigService,
+    private readonly usersService: UsersService,
   ) {}
 
   @Post('register')
@@ -49,8 +51,11 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  me(@CurrentUser() user: any) {
-    return user;
+  async me(@CurrentUser() user: { id: string }) {
+    const full = await this.usersService.findById(user.id);
+    if (!full) return user;
+    const { passwordHash: _, ...safe } = full;
+    return safe;
   }
 
   @Get('google')

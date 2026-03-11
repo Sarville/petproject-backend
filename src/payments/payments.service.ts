@@ -127,30 +127,15 @@ export class PaymentsService {
     });
   }
 
-  async handleWebhook(rawBody: Buffer, signature: string): Promise<void> {
+  constructWebhookEvent(rawBody: Buffer, signature: string): Stripe.Event {
     const webhookSecret = this.config.get<string>('STRIPE_WEBHOOK_SECRET');
     if (!webhookSecret) throw new Error('STRIPE_WEBHOOK_SECRET is not set');
 
-    let event: Stripe.Event;
     try {
-      event = this.stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+      return this.stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
     } catch (err) {
       this.logger.warn(`Webhook signature verification failed: ${String(err)}`);
       throw new BadRequestException('Invalid webhook signature');
-    }
-
-    this.logger.log(`Stripe webhook received: ${event.type} (${event.id})`);
-
-    switch (event.type) {
-      case 'payment_intent.succeeded':
-        await this.handlePaymentSucceeded(event);
-        break;
-      case 'payment_intent.payment_failed':
-        await this.handlePaymentFailed(event);
-        break;
-      default:
-        // Unhandled event type — acknowledge without action
-        break;
     }
   }
 
@@ -212,7 +197,7 @@ export class PaymentsService {
     return { status: paymentIntent.status, alreadyProcessed: false };
   }
 
-  private async handlePaymentSucceeded(event: Stripe.Event): Promise<void> {
+  async handlePaymentSucceeded(event: Stripe.Event): Promise<void> {
     const paymentIntent = event.data.object as Stripe.PaymentIntent;
 
     const transaction = await this.prisma.transaction.findUnique({
@@ -263,7 +248,7 @@ export class PaymentsService {
     this.logger.log(`Balance credited: user=${transaction.userId} amount=${transaction.amount}`);
   }
 
-  private async handlePaymentFailed(event: Stripe.Event): Promise<void> {
+  async handlePaymentFailed(event: Stripe.Event): Promise<void> {
     const paymentIntent = event.data.object as Stripe.PaymentIntent;
 
     const transaction = await this.prisma.transaction.findUnique({

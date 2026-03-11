@@ -32,6 +32,8 @@ model User {
   googleId         String?       @unique @db.VarChar(100)
   role             UserRole      @default(USER)
   balance          Decimal       @default(0) @db.Decimal(10, 2)
+  nickname         String?       @unique @db.VarChar(50)
+  avatar           String?       @db.VarChar(100)
   stripeCustomerId        String?       @unique @map("stripe_customer_id") @db.VarChar(255)
   stripePaymentMethodId   String?       @map("stripe_payment_method_id") @db.VarChar(255)
   createdAt        DateTime      @default(now())
@@ -103,4 +105,33 @@ model ApiQuota {
   updatedAt DateTime @default(now())
 
   @@map("api_quotas")
+}
+
+enum SchedulerRunStatus {
+  SUCCESS
+  PARTIAL
+  FAILED
+}
+
+model SchedulerConfig {
+  id              String  @id @default("default")
+  enabled         Boolean @default(true)
+  intervalType    String  @default("DAILY")
+  intervalMinutes Int     @default(60)
+  dailyHour       Int     @default(2)
+  dailyMinute     Int     @default(0)
+
+  @@map("scheduler_config")
+}
+
+model SchedulerRun {
+  id           String             @id @default(uuid()) @db.Uuid
+  startedAt    DateTime
+  finishedAt   DateTime?
+  checkedCount Int                @default(0)
+  updatedCount Int                @default(0)
+  errors       Json               @default("[]")
+  status       SchedulerRunStatus @default(SUCCESS)
+
+  @@map("scheduler_runs")
 }

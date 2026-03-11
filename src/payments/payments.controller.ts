@@ -10,14 +10,20 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PaymentsService } from './payments.service';
+import { PAYMENTS_QUEUE, WEBHOOK_JOB } from './payments.queue';
 
 @Controller('payments')
 export class PaymentsController {
-  constructor(private readonly paymentsService: PaymentsService) {}
+  constructor(
+    private readonly paymentsService: PaymentsService,
+    @InjectQueue(PAYMENTS_QUEUE) private readonly paymentsQueue: Queue,
+  ) {}
 
   @Get('saved-card')
   @UseGuards(JwtAuthGuard)
@@ -66,7 +72,17 @@ export class PaymentsController {
     if (!signature) throw new BadRequestException('Missing stripe-signature header');
     const rawBody = req.rawBody;
     if (!rawBody) throw new BadRequestException('Missing raw body');
-    await this.paymentsService.handleWebhook(rawBody, signature);
+
+    const event = this.paymentsService.constructWebhookEvent(rawBody, signature);
+
+    await this.paymentsQueue.add(WEBHOOK_JOB, { event }, {
+      jobId: event.id,
+      attempts: 5,
+      backoff: { type: 'exponential', delay: 3000 },
+      removeOnComplete: 100,
+      removeOnFail: 200,
+    });
+
     return { received: true };
   }
 }
